@@ -4,6 +4,8 @@
  * Test for tinder api
  * by rodrigo nas
  * 
+ * 9dc3b5f88fd9
+ * 
  */
 
 set_time_limit(0);
@@ -51,6 +53,11 @@ Class TinderApi {
 
 	function addHttpHeader($payload) {
 		$this->http_header[] = $payload;
+		return $this;
+	}
+	
+	function setHttpHeader(array $payload) {
+		$this->http_header = $payload;
 		return $this;
 	}
 
@@ -134,19 +141,19 @@ Class TinderApi {
 	 * - Like or pass a user
 	 * - Recommendations (list of users to like or pass)
 	 *
-   * API Details
-   * Host 	    api.gotinder.com
-   * Protocol 	SSL only
-   * 
-   * Request headers
-   * Header name 	    Description / example 	                                                Required?
-   * X-Auth-Token 	  A UUID4 format authentication token obtained via the /auth api endpoint Yes
-   * Content-type 	  application/json 	                                                      Yes
-   * app_version 	    3                                                                      	no
-   * platform 	      ios 	                                                                  no
-   * User-agent 	    Tinder/3.0.4 (iPhone; iOS 7.1; Scale/2.00) 	                            Yes
-   * os_version 	    700001 	                                                                No
-   * 
+         * API Details
+         * Host 	    api.gotinder.com
+         * Protocol 	SSL only
+         * 
+         * Request headers
+         * Header name 	    Description / example 	                                                  Required?
+         * X-Auth-Token     A UUID4 format authentication token obtained via the /auth api endpoint       Yes
+         * Content-type     application/json 	                                                          Yes
+         * app_version 	    3                                                                      	  no
+         * platform 	    ios 	                                                                  no
+         * User-agent 	    Tinder/3.0.4 (iPhone; iOS 7.1; Scale/2.00) 	                                  Yes
+         * os_version 	    700001 	                                                                  No
+         * 
 	 */
 	function prepareTinder() {
 
@@ -154,9 +161,9 @@ Class TinderApi {
 
 			$this->general_account_info = json_decode($this->http_response, true); // info about profile
 			$this->x_auth_token         = $this->general_account_info['token']; // X-Auth-Token
+			
 			$this->addHttpHeader(sprintf("X-Auth-Token: %s", $this->x_auth_token));
-
-			$this->authStatus(true);
+			$this->authStatus(true); // authOk() now returns TRUE
 		}
 
 		return $this;
@@ -164,11 +171,15 @@ Class TinderApi {
 	}
 
 	function startWithXAuth($x_auth_token) {
-	   $this->addHttpHeader('app-version: 123')
-            ->addHttpHeader('platform: ios')
-            ->addHttpHeader('content-type: application/json')
-            ->addHttpHeader('User-agent: Tinder/4.0.9 (iPhone; iOS 8.0.2; Scale/2.00)')
-            ->addHttpHeader(sprintf("X-Auth-Token: %s", $x_auth_token));
+		
+		$http_header = array();
+		$http_header[] = 'app-version: 123';
+		$http_header[] = 'platform: ios';
+		$http_header[] = 'content-type: application/json';
+		$http_header[] = 'User-agent: Tinder/4.0.9 (iPhone; iOS 8.0.2; Scale/2.00)';
+		$http_header[] = sprintf("X-Auth-Token: %s", $x_auth_token);
+	   
+		$this->setHttpHeader($http_header);
 
 		return $this;
 	}
@@ -177,29 +188,37 @@ Class TinderApi {
 		$this->setUrl('https://api.gotinder.com/user/recs')
 		     ->getRequest();
 
-	    var_dump($this->http_response);
+		$recs = json_decode($this->http_response, true);
+	    if ($recs['status'] == 200) {
+			var_dump($recs['results'][1]);
+		} else {
+			exit("Error in recommendations listing");
+		}
+	    
 	    exit;
 	}
 }
 
 /*
- First to make any activity in api you need to have the X-Auth-Token acquired via
- post in https://api.gotinder.com/auth:
+ * First to make any activity in api you need to have the X-Auth-Token acquired via
+ * post in https://api.gotinder.com/auth:
+ * 
+ *  You need to post facebook_token and facebook_id:
+ *  $this->post_payload = json_encode(array('facebook_token' => $this->fb_token,
+ * 			                                'facebook_id'    => $this->fb_id));
+ * 
+ *  A good way to research the data is via:
+ *  http://opauth.org/ in facebook Try me to cat all information about the facebook account
+ */
+$tinder = new TinderApi('fb_token', 'fb_id');
 
- You need to post facebook_token and facebook_id:
- $this->post_payload = json_encode(array('facebook_token' => $this->fb_token,
-			                             'facebook_id'    => $this->fb_id));
+// Start with x-auth-token
+$tinder->startWithXAuth('x-auth-token')
+       ->getRecs();
+       
+       exit;
 
- A good way to research the data is via:
- http://opauth.org/ in facebook Try me to cat all information about the facebook account
-*/
-$tinder = new TinderApi('fb_id', 'fb_id');
-
-// Know x-auth-token
-/* $tinder->startWithXAuth('X-Auth-Token')
-       ->getRecs(); */
-
-// Cat x-auth-token
+// Start without x-auth-token
 $tinder->setPostPayload(array('facebook_token' => $tinder->getFbToken(), 'facebook_id' => $tinder->getFbId()))
        ->setUrl('https://api.gotinder.com/auth')
        ->addHttpHeader('app-version: 123')
@@ -207,8 +226,8 @@ $tinder->setPostPayload(array('facebook_token' => $tinder->getFbToken(), 'facebo
        ->addHttpHeader('content-type: application/json')
        ->addHttpHeader('User-agent: Tinder/4.0.9 (iPhone; iOS 8.0.2; Scale/2.00)')
        ->postSsl(false) // Do not check ssl.
-       ->postRequest()
-       ->prepareTinder()
-       ->getRecs();
+       ->postRequest() // Post request
+       ->prepareTinder() // Prepare header with X-Auth-Token
+       ->getRecs(); // Recommendantion list
 
 
