@@ -1,10 +1,9 @@
 <?php
 
-/*
+/* 
+ * 
  * Test for tinder api
  * by rodrigo nas
- * 
- * 9dc3b5f88fd9
  * 
  */
 
@@ -12,6 +11,7 @@ set_time_limit(0);
 error_reporting(E_ALL);
 
 Class TinderApi {
+	
 	var $fb_token;
 	var $fb_id;
 	var $x_auth_token;
@@ -77,6 +77,19 @@ Class TinderApi {
 	function postSsl($opt = true) {
 		$this->post_ssl = $opt;
 		return $this;
+	}
+	
+	function prepareDefaultHeaders($x_auth_token = false) {
+		
+		$this->addHttpHeader('app-version: 123')
+		     ->addHttpHeader('platform: ios')
+		     ->addHttpHeader('content-type: application/json')
+		     ->addHttpHeader('User-agent: Tinder/4.0.9 (iPhone; iOS 8.0.2; Scale/2.00');
+		     
+		$x_auth_token !== false ? $this->addHttpHeader(sprintf("X-Auth-Token: %s", $x_auth_token));
+		     
+		return $this;
+		
 	}
 
 	function getRequest() {
@@ -172,14 +185,8 @@ Class TinderApi {
 
 	function startWithXAuth($x_auth_token) {
 		
-		$http_header = array();
-		$http_header[] = 'app-version: 123';
-		$http_header[] = 'platform: ios';
-		$http_header[] = 'content-type: application/json';
-		$http_header[] = 'User-agent: Tinder/4.0.9 (iPhone; iOS 8.0.2; Scale/2.00)';
-		$http_header[] = sprintf("X-Auth-Token: %s", $x_auth_token);
-	   
-		$this->setHttpHeader($http_header);
+		$this->prepareDefaultHeaders($x_auth_token);
+		$this->addHttpHeader(sprintf("X-Auth-Token: %s", $x_auth_token));
 
 		return $this;
 	}
